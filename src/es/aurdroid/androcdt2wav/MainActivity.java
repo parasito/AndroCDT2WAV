@@ -1,3 +1,8 @@
+/**********************************************
+ * Coded by jrodriguezv
+ **********************************************/
+
+
 package es.aurdroid.androcdt2wav;
 
 import java.io.BufferedInputStream;
