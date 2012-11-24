@@ -1,11 +1,12 @@
 <resources>
 
     <string name="app_name">AndroCDT2WAV</string>
-    <string name="menu_settings">Settings</string>
+    <string name="menu_settings">About</string>
     <string name="title_activity_main">AndroCDT2WAV</string>
     <string name="cdt_file">CDT File</string>
     <string name="song_title">Select a file to play</string>
     <string name="progress_title">Processing</string>
     <string name="progress_text">Processing selected file...</string>
+    <string name="about_message">Developed by <b>jrodriguezv</b>.\n(Thanks Devilmarkus for his code and tool CDT2WAV)</string>
 
 </resources>

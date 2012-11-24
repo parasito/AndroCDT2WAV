@@ -11,24 +11,35 @@ import java.util.ArrayList;
 import es.aurdroid.cdt2wav.CDT2WAV;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.ProgressDialog;
+import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.media.MediaPlayer;
 import android.media.MediaPlayer.OnCompletionListener;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
+import android.preference.PreferenceManager;
 import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.SeekBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 public class MainActivity extends Activity implements OnCompletionListener,
 		SeekBar.OnSeekBarChangeListener {
 
 	private static final int REQUEST_PICK_FILE = 1;
-
+	private static final String PREF_PATH = "es.aurdroid.androcdt2wav.path";
+	
+	SharedPreferences prefs;
+	
 
 	private int[] blocks;
 	private String[] ids;
@@ -43,6 +54,8 @@ public class MainActivity extends Activity implements OnCompletionListener,
 
 	private String playname = "";
 	private String savename = "";
+	private String lastPath = "";
+	private String extension = "";
 
 	boolean fileToPlay = false;
 	boolean deleteFile = true;
@@ -59,6 +72,8 @@ public class MainActivity extends Activity implements OnCompletionListener,
 	private TextView songTitleLabel;
 	private TextView songCurrentDurationLabel;
 	private TextView songTotalDurationLabel;
+	private ImageView imageViewAmstrad;
+	private ImageView imageViewSinclair;
 	
 	private TextView textViewInfo;
 	// Media Player
@@ -72,11 +87,16 @@ public class MainActivity extends Activity implements OnCompletionListener,
 	private int seekBackwardTime = 5000; // 5000 milliseconds
 	
 	private ProgressDialog pd;
+	private ConvertTask convertTask;
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
+		//Preferences
+		prefs = this.getSharedPreferences(
+			      "es.aurdroid.androcdt2wav", Context.MODE_PRIVATE);
+		
 		// All player buttons
 		btnPlay = (ImageButton) findViewById(R.id.btnPlay);
 		btnForward = (ImageButton) findViewById(R.id.btnForward);
@@ -92,7 +112,10 @@ public class MainActivity extends Activity implements OnCompletionListener,
 		songTotalDurationLabel = (TextView) findViewById(R.id.songTotalDurationLabel);
 		
 		textViewInfo = (TextView) findViewById(R.id.textViewInfo);
-
+		
+		imageViewAmstrad = (ImageView) findViewById(R.id.brandImageView1);
+		imageViewSinclair = (ImageView) findViewById(R.id.brandImageView2);
+		
 		// Mediaplayer
 		mp = new MediaPlayer();
 
@@ -223,12 +246,19 @@ public class MainActivity extends Activity implements OnCompletionListener,
 				ArrayList<String> extensions = new ArrayList<String>();
 				// extensions.add(".pdf");
 				extensions.add(".cdt");
-				// extensions.add(".docx");
+				extensions.add(".tzx");
 				// extensions.add(".txt");
 				// extensions.add(".rtf");
 				intent.putExtra(
 						FilePickerActivity.EXTRA_ACCEPTED_FILE_EXTENSIONS,
 						extensions);
+				
+				//Path to begin
+				intent.putExtra(FilePickerActivity.EXTRA_FILE_PATH,
+						readPathFromPrefs());
+				// Get intent extras
+				//if(getIntent().hasExtra(EXTRA_FILE_PATH)) {
+				//	mDirectory = new File(getIntent().getStringExtra(EXTRA_FILE_PATH));
 
 				// Start the activity
 				startActivityForResult(intent, REQUEST_PICK_FILE);
@@ -243,13 +273,32 @@ public class MainActivity extends Activity implements OnCompletionListener,
 		getMenuInflater().inflate(R.menu.activity_main, menu);
 		return true;
 	}
+	
+	@Override
+	public boolean onOptionsItemSelected(MenuItem item) {
+	    switch (item.getItemId()) {
+	        case R.id.menu_settings:
+	        	AlertDialog ad = new AlertDialog.Builder(this).create();  
+	        	ad.setCancelable(false); // This blocks the 'BACK' button  
+	        	ad.setMessage(this.getString(R.string.about_message));  
+	        	ad.setButton("OK", new DialogInterface.OnClickListener() {  
+	        	    public void onClick(DialogInterface dialog, int which) {  
+	        	        dialog.dismiss();                      
+	        	    }  
+	        	});  
+	        	ad.show();
+	        	return true;
+	        default:
+	            return super.onOptionsItemSelected(item);
+	    }
+	}
 
 	@Override
 	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
 		switch (requestCode) {
 		case REQUEST_PICK_FILE:
 			if (resultCode == FilePickerActivity.RESULT_OK) {
-				//Delete previus file
+				//Delete previous file
 				this.deleteFile();
 				this.deleteFile = true;
 				//Set save status
@@ -257,6 +306,10 @@ public class MainActivity extends Activity implements OnCompletionListener,
 				// A filename (absolute path) was returned. Try to display it.
 				final String filename = data
 						.getStringExtra(FilePickerActivity.EXTRA_FILE_PATH);
+				//get Extension
+				setExtension(filename);
+				//Save path
+				this.savePathPrefs(filename);
 				// File file = new File(filename);
 				System.out.println("File name selected: " + filename);
 				songTitleLabel.setText(data
@@ -266,7 +319,9 @@ public class MainActivity extends Activity implements OnCompletionListener,
 				pd = ProgressDialog.show(this,
 						this.getString(R.string.progress_title),
 						this.getString(R.string.progress_text), true, false);
-				new ConvertTask().execute(filename);
+				//Thread to convert file
+				convertTask = new ConvertTask();
+				convertTask.execute(filename);
 			} else {
 				System.out.println("Exiting with result code = " + resultCode);
 				return;
@@ -296,6 +351,7 @@ public class MainActivity extends Activity implements OnCompletionListener,
 			              pd.dismiss();			         
 			              MainActivity.this.feedInfo();
 			              MainActivity.this.playSong();
+			              MainActivity.this.displayLogo();
 			          }
 
  
@@ -333,6 +389,8 @@ public class MainActivity extends Activity implements OnCompletionListener,
 		this.savename = name;
 		this.savename = this.savename.replace(".cdt", "");
 		this.savename = this.savename.replace(".CDT", "");
+		this.savename = this.savename.replace(".tzx", "");
+		this.savename = this.savename.replace(".TZX", "");
 		this.savename += ".wav";
 		// if (this.player != null) {
 		// this.player.stop();
@@ -447,21 +505,29 @@ public class MainActivity extends Activity implements OnCompletionListener,
 	 * */
 	private Runnable mUpdateTimeTask = new Runnable() {
 		public void run() {
-			long totalDuration = mp.getDuration();
-			long currentDuration = mp.getCurrentPosition();
-
-			// Displaying Total Duration time
-			songTotalDurationLabel.setText("" +	utils.milliSecondsToTimer(totalDuration)); 
-			// Displaying time completed playing 
-			songCurrentDurationLabel.setText("" + utils.milliSecondsToTimer(currentDuration));
-			  
-			// Updating progress bar 
-			int progress = (int)(utils.getProgressPercentage(currentDuration, totalDuration));
-			//Log.d("Progress", ""+progress);
-			songProgressBar.setProgress(progress);
-			  
-			// Running this thread after 100 milliseconds
-			mHandler.postDelayed(this, 100);
+			try
+			{
+				long totalDuration = mp.getDuration();
+				long currentDuration = mp.getCurrentPosition();
+	
+				// Displaying Total Duration time
+				songTotalDurationLabel.setText("" +	utils.milliSecondsToTimer(totalDuration)); 
+				// Displaying time completed playing 
+				songCurrentDurationLabel.setText("" + utils.milliSecondsToTimer(currentDuration));
+				  
+				// Updating progress bar 
+				int progress = (int)(utils.getProgressPercentage(currentDuration, totalDuration));
+				//Log.d("Progress", ""+progress);
+				songProgressBar.setProgress(progress);
+				  
+				//if (totalDuration < currentDuration)
+					// Running this thread after 100 milliseconds
+					mHandler.postDelayed(this, 100);
+			}
+			catch (Exception e)
+			{
+				System.out.println("Exception: " + e.getMessage());
+			}
 		}
 	};
 
@@ -518,13 +584,58 @@ public class MainActivity extends Activity implements OnCompletionListener,
 		return false;
 		
 	}
+	
+	private void setExtension(String name){
+		//TXZ or CDT
+		extension = name.substring(name.length()-3, name.length());
+	}
+	
+	private void displayLogo(){
+		//TODO hacer esto fuera del hilo
+		
+		if (extension.compareToIgnoreCase("CDT") == 0){
+			imageViewAmstrad.setVisibility(View.VISIBLE);
+			imageViewSinclair.setVisibility(View.INVISIBLE);
+		}
+		else{
+			imageViewSinclair.setVisibility(View.VISIBLE);
+			imageViewAmstrad.setVisibility(View.INVISIBLE);
+		}
+	}
+	
+	
+	/*
+	 * Reads path from preferences
+	 * @return paths
+	 */
+	protected String readPathFromPrefs(){
+		return prefs.getString(PREF_PATH, "/");
+	}
+	
+	/*
+	 * Stores path in preferences
+	 */
+	protected void savePathPrefs(String path){
+		//Delete file name
+		int index = path.lastIndexOf("/");
+		if (index > 0)
+			path = path.substring(0, index);
+		System.out.println(path);
+		prefs.edit().putString(PREF_PATH, path).commit();
+	}
 
 	@Override
 	public void onDestroy() {
 		super.onDestroy();
 		deleteFile();
-		mp.stop();
-		mp.release();
+		if (mp != null){
+			mp.stop();
+			mp.release();
+			mp = null;
+		}
+		if (convertTask != null)
+			if (convertTask.isCancelled() == false)
+				convertTask.cancel(true);
 	}
 
 }
