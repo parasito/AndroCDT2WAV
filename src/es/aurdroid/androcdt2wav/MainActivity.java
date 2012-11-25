@@ -19,10 +19,12 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.media.MediaPlayer;
 import android.media.MediaPlayer.OnCompletionListener;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.preference.PreferenceManager;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -34,6 +36,11 @@ import android.widget.Toast;
 
 public class MainActivity extends Activity implements OnCompletionListener,
 		SeekBar.OnSeekBarChangeListener {
+	
+	/**
+	 * Log level
+	 */
+	public final static String LOG = "AndroCDT2WAV";
 
 	private static final int REQUEST_PICK_FILE = 1;
 	private static final String PREF_PATH = "es.aurdroid.androcdt2wav.path";
@@ -93,6 +100,8 @@ public class MainActivity extends Activity implements OnCompletionListener,
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
+		
+	    
 		//Preferences
 		prefs = this.getSharedPreferences(
 			      "es.aurdroid.androcdt2wav", Context.MODE_PRIVATE);
@@ -264,6 +273,24 @@ public class MainActivity extends Activity implements OnCompletionListener,
 				startActivityForResult(intent, REQUEST_PICK_FILE);
 			}
 		});
+		
+		// Get the intent that started this activity
+		Intent intent = getIntent();
+
+		if (intent != null) {
+			// Called from another app
+			if (Intent.ACTION_VIEW.equals(intent.getAction())) {
+
+				final Uri data = intent.getData();
+
+				if (data != null) {
+					Log.d(LOG, "> Got data   : " + data);
+					final String filePath = data.getEncodedPath();
+					Log.d(LOG, "> Open file  : " + filePath);
+					onFileReceived(filePath);
+				} 
+			}
+		}
 
 
 	}
@@ -298,7 +325,7 @@ public class MainActivity extends Activity implements OnCompletionListener,
 		switch (requestCode) {
 		case REQUEST_PICK_FILE:
 			if (resultCode == FilePickerActivity.RESULT_OK) {
-				//Delete previous file
+/*				//Delete previous file
 				this.deleteFile();
 				this.deleteFile = true;
 				//Set save status
@@ -322,8 +349,11 @@ public class MainActivity extends Activity implements OnCompletionListener,
 				//Thread to convert file
 				convertTask = new ConvertTask();
 				convertTask.execute(filename);
+	*/
+				processFile(data.getStringExtra(FilePickerActivity.EXTRA_FILE_PATH), 
+						data.getStringExtra(FilePickerActivity.EXTRA_FILE_NAME));
 			} else {
-				System.out.println("Exiting with result code = " + resultCode);
+				Log.d(LOG, "> Exiting with result code = " + resultCode);
 				return;
 			}
 			break;
@@ -622,6 +652,49 @@ public class MainActivity extends Activity implements OnCompletionListener,
 			path = path.substring(0, index);
 		System.out.println(path);
 		prefs.edit().putString(PREF_PATH, path).commit();
+	}
+	
+	/*
+	 * A file is received from another app
+	 */
+	private void onFileReceived(String file) {
+		File newFile = new File(file);
+		Log.d(LOG, "> File received :" + newFile.getAbsolutePath());
+		if (newFile.isFile()) {
+			// Set result		
+			Log.d(LOG, "> FileReceived OK : " + newFile.getAbsolutePath());
+			//Process the file
+			processFile(newFile.getAbsolutePath(), newFile.getName());
+		} else {
+			Log.d(LOG, "> File not valid ");
+			setResult(RESULT_CANCELED);
+		}
+	}
+	
+	/*
+	 * Process and play file
+	 */
+	private void processFile (String path, String name){
+		//Delete previous file
+		this.deleteFile();
+		this.deleteFile = true;
+		//Set save status
+		//this.btnSave.setEnabled(true);
+		// A filename (absolute path) was returned. Try to display it.
+		//get Extension
+		setExtension(path);
+		//Save path
+		this.savePathPrefs(path);
+		Log.d(LOG, ">File name selected: " + path);
+		songTitleLabel.setText(name);
+
+		//Progress Dialog
+		pd = ProgressDialog.show(this,
+				this.getString(R.string.progress_title),
+				this.getString(R.string.progress_text), true, false);
+		//Thread to convert file
+		convertTask = new ConvertTask();
+		convertTask.execute(path);
 	}
 
 	@Override

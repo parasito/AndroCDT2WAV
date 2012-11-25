@@ -1,7 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="es.aurdroid.androcdt2wav"
-    android:versionCode="1"
-    android:versionName="0.1" >
+    android:versionCode="2"
+    android:versionName="2" >
 
     <uses-sdk
         android:minSdkVersion="8"
@@ -22,12 +22,30 @@
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
+                
             </intent-filter>
+            <intent-filter>
+			    <action android:name="android.intent.action.VIEW" />
+			    <category android:name="android.intent.category.DEFAULT" />
+			    <data android:scheme="file" />
+			    <data android:host="*" />
+			    <data android:mimeType="*/*"/>
+			    <data android:pathPattern=".*\\.tzx" />
+		  	</intent-filter>
+		  	<intent-filter>
+			    <action android:name="android.intent.action.VIEW" />
+			    <category android:name="android.intent.category.DEFAULT" />
+			    <data android:scheme="file" />
+			    <data android:host="*" />
+			    <data android:mimeType="*/*"/>
+			    <data android:pathPattern=".*\\.cdt" />
+		  	</intent-filter>
+ 
         </activity>
         <activity 
             android:name="FilePickerActivity"
             android:screenOrientation="portrait"
-            android:configChanges="keyboardHidden|orientation">
+            android:configChanges="keyboardHidden|orientation">           
         </activity>
     </application>
 
