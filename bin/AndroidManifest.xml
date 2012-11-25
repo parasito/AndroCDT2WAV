@@ -1,7 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="es.aurdroid.androcdt2wav"
-    android:versionCode="2"
-    android:versionName="2" >
+    android:versionName="Alfa 0.2" >
 
     <uses-sdk
         android:minSdkVersion="8"

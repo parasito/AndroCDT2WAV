@@ -100,6 +100,7 @@ public final class R {
         public static final int about_message=0x7f040007;
         public static final int app_name=0x7f040000;
         public static final int cdt_file=0x7f040003;
+        public static final int file_not_valid=0x7f040008;
         public static final int menu_settings=0x7f040001;
         public static final int progress_text=0x7f040006;
         public static final int progress_title=0x7f040005;

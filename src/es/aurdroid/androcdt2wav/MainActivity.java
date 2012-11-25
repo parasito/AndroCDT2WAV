@@ -6,10 +6,15 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
 import java.util.ArrayList;
+
 
 import es.aurdroid.cdt2wav.CDT2WAV;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
@@ -24,6 +29,9 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.preference.PreferenceManager;
+import android.text.Html;
+import android.text.Spannable;
+import android.text.Spanned;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -291,8 +299,7 @@ public class MainActivity extends Activity implements OnCompletionListener,
 				} 
 			}
 		}
-
-
+		
 	}
 
 	@Override
@@ -658,16 +665,29 @@ public class MainActivity extends Activity implements OnCompletionListener,
 	 * A file is received from another app
 	 */
 	private void onFileReceived(String file) {
-		File newFile = new File(file);
-		Log.d(LOG, "> File received :" + newFile.getAbsolutePath());
-		if (newFile.isFile()) {
-			// Set result		
-			Log.d(LOG, "> FileReceived OK : " + newFile.getAbsolutePath());
-			//Process the file
-			processFile(newFile.getAbsolutePath(), newFile.getName());
-		} else {
-			Log.d(LOG, "> File not valid ");
-			setResult(RESULT_CANCELED);
+		//Parse file Name
+		//file = StringEscapeUtils.unescapeHtml3(file);
+		try {
+			String decode = URLDecoder.decode(file, "UTF-8");
+			Log.d(LOG, "> File decoded : " + decode);
+			file = decode;
+			//file = file.replace("%20"," ");
+			Log.d(LOG, "> File parsed : " + file);
+			File newFile = new File(file);
+			Log.d(LOG, "> File received :" + newFile.getAbsolutePath());
+			if (newFile.isFile()) {
+				// Set result		
+				Log.d(LOG, "> FileReceived OK : " + newFile.getAbsolutePath());
+				//Process the file
+				processFile(newFile.getAbsolutePath(), newFile.getName());
+			} else {
+				Log.d(LOG, "> File not valid ");
+				Toast.makeText(this, this.getString(R.string.file_not_valid), Toast.LENGTH_SHORT).show();
+				setResult(RESULT_CANCELED);
+			}
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
+			Log.d(LOG, "> Exception: " + e.getMessage());
 		}
 	}
 	

@@ -8,5 +8,6 @@
     <string name="progress_title">Processing</string>
     <string name="progress_text">Processing selected file...</string>
     <string name="about_message">Developed by <b>jrodriguezv</b>.\n(Thanks Devilmarkus for his code and tool CDT2WAV)</string>
+    <string name="file_not_valid">File not valid</string>
 
 </resources>
